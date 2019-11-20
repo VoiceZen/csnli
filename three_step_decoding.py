@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import dynet_config
-dynet_config.set(mem="16384",random_seed=127, autobatch=1,requested_gpus=1)
+dynet_config.set(mem="10240",random_seed=127, autobatch=1)
 
 import io
 import re
@@ -88,43 +88,46 @@ class ThreeStepDecoding(object):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description="Language Identification System")
-    parser.add_argument('--test-file', default="/nfs/alldata/users/ak47/all_words_greedy.csv",dest='tfile',  help='Raw Test file')
+    parser.add_argument('--test-file', default="temp_input.csv",dest='tfile',  help='Raw Test file')
     parser.add_argument('--lid-model', default='lid_models/hinglish',dest='lid_model', help='Load Pretrained Model')
     parser.add_argument('--etrans',default='nmt_models/eng2eng.pt',  help='OpenNMT English Transliteration Model')
     parser.add_argument('--htrans',default='nmt_models/rom2hin.pt',  help='OpenNMT Hindi Transliteration Model')
     parser.add_argument('--wx', action='store_true', help='set this flag to return Hindi words in WX')
-    parser.add_argument('--output-file', dest='ofile', default='/nfs/alldata/users/ak47/all_words_greedy_op.csv', help='Output File')
+    parser.add_argument('--output-file', dest='ofile', default='temp_output.csv', help='Output File')
     args = parser.parse_args()
-
-    tsd = ThreeStepDecoding(args.lid_model, args.htrans, args.etrans, wx=args.wx)
-    tsd.lid.en_trans.transliterate('\n'.join(set(io.open(args.tfile).read().split())))
-    tsd.lid.etrans = tsd.lid.en_trans.trans_dict
-    tsd.lid.hi_trans.transliterate('\n'.join(set(io.open(args.tfile).read().split())))
-    tsd.lid.htrans = tsd.lid.hi_trans.trans_dict
-    with io.open(args.tfile) as ifp, io.open(args.ofile, 'w') as ofp:
-        for i,sent in enumerate(ifp):
-            try:
-                if i%10==0:
-                    print(sent,"  Completed : ",i)
-                if sent=='""\n' or sent==u'\n':
+    val_inputs = list(set(io.open(args.tfile).read().split()))
+    with io.open(args.ofile, 'w') as ofp:
+        for i in range(0,len(val_inputs),5000):
+            ifp = val_inputs[i:i+5000]
+            tsd = ThreeStepDecoding(args.lid_model, args.htrans, args.etrans, wx=args.wx)
+            tsd.lid.en_trans.transliterate('\n'.join(ifp))
+            tsd.lid.etrans = tsd.lid.en_trans.trans_dict
+            tsd.lid.hi_trans.transliterate('\n'.join(ifp))
+            tsd.lid.htrans = tsd.lid.hi_trans.trans_dict
+        
+            for i,sent in enumerate(ifp):
+                try:
+                    if i%10==0:
+                        print(sent,"  Completed : ",i)
+                    if sent=='""\n' or sent==u'\n':
+                        ofp.write(",")
+                        ofp.write('\n')
+                        continue
+                    elif len(sent)>=1:
+                        dec_sent = tsd.tag_sent(sent, trans=False)
+                        ofp.write(" ".join(sent.split()))
+                        ofp.write(",")
+                        ofp.write(" ".join([''.join(x[1]) for x in dec_sent]))
+                        ofp.write(",")
+                        ofp.write(" ".join([''.join(x[2]) for x in dec_sent]))
+                        ofp.write('\n')
+                    else:
+                        ofp.write(",")
+                        ofp.write('\n')
+                except:
                     ofp.write(",")
                     ofp.write('\n')
                     continue
-                elif len(sent)>=1:
-                    dec_sent = tsd.tag_sent(sent, trans=False)
-                    ofp.write(" ".join(sent.split()))
-                    ofp.write(",")
-                    ofp.write(" ".join([''.join(x[1]) for x in dec_sent]))
-                    ofp.write(",")
-                    ofp.write(" ".join([''.join(x[2]) for x in dec_sent]))
-                    ofp.write('\n')
-                else:
-                    ofp.write(",")
-                    ofp.write('\n')
-            except:
-                ofp.write(",")
-                ofp.write('\n')
-                continue
 
     # if chunk_extractor:
 
