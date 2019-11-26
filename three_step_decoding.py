@@ -97,8 +97,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     val_inputs = list(set(io.open(args.tfile).read().split()))
     with io.open(args.ofile, 'w') as ofp:
-        for i in range(0,len(val_inputs),5000):
-            ifp = val_inputs[i:i+5000]
+        for i in range(0,len(val_inputs),10000):
+            ifp = val_inputs[i:i+10000]
             tsd = ThreeStepDecoding(args.lid_model, args.htrans, args.etrans, wx=args.wx)
             tsd.lid.en_trans.transliterate('\n'.join(ifp))
             tsd.lid.etrans = tsd.lid.en_trans.trans_dict
