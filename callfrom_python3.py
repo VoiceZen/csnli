@@ -6,6 +6,39 @@ from collections import Counter
 import sys
 import swifter
 
+def levenshtein(a, b):
+    "Calculates the Levenshtein distance between a and b."
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n,m)) space
+        a, b = b, a
+        n, m = m, n
+
+    current = range(n + 1)
+    for i in range(1, m + 1):
+        previous, current = current, [i] + [0] * n
+        for j in range(1, n + 1):
+            add, delete = previous[j] + 1, current[j - 1] + 1
+            change = previous[j - 1]
+            if a[j - 1] != b[i - 1]:
+                change = change + 1
+            current[j] = min(add, delete, change)
+
+    return current[n]
+
+def new_wer(x):
+    try:
+        gt = x[-3].split(' ')
+    except AttributeError:
+        return 0
+    try:
+        lm = x[-1].strip().split(' ')
+    except AttributeError:
+        lm = []
+    score = levenshtein(gt,lm)
+    nor_score = score/len(gt)
+    return nor_score
+
 
 class Translitration():
     
@@ -76,7 +109,7 @@ class Translitration():
         final_csv['sub_gt'] = self.df[self.gt].swifter.apply(change_words)
         final_csv['sub_greedy'] = self.df[self.greedy].swifter.apply(change_words)
         final_csv['sub_lm'] = self.df[self.lm].swifter.apply(change_words)
-        #final_csv['wer_lm'] = self.df['wer_lm'] # some changes may be removed
+        final_csv['wer_lm'] = final_csv.swifter.apply(new_wer,axis =1) # some changes may be removed
         final_csv['wav_filename'] = self.df['wav_filename']
         with open(path_wrddist,'wb') as f:
             pk.dump(word_dist,f)
