@@ -5,6 +5,9 @@ import pickle as pk
 from collections import Counter
 import sys
 import swifter
+import shlex
+import subprocess
+
 
 def levenshtein(a, b):
     "Calculates the Levenshtein distance between a and b."
@@ -72,10 +75,10 @@ class Translitration():
             for i in only_lower:
                 if len(i) != 0:
                     f.write(i+'\n')
-        FULL_COMMAND = "bash && "+self.ENV_COMMAND + " && " + self.__get_command__(temp_input,temp_output)
-        print("Running {}".format(FULL_COMMAND))        
-        #os.system(FULL_COMMAND)
-        #os.system("conda activate base")
+        FULL_COMMAND = "./env_changer.sh {} {}".format(temp_input,temp_output)
+        print("Running {}".format(FULL_COMMAND))
+        pp = subprocess.Popen(shlex.split(FULL_COMMAND),shell=True,stdout=subprocess.DEVNULL)
+        pp.wait()
         df = pd.read_csv(temp_output, header= None)
         mapping_one = {}
         for i,j in zip(df[0],df[1]):
@@ -120,3 +123,8 @@ class Translitration():
             pk.dump(actual_reverse,f)
         print("Saved the dictionary at {}".format(path_to_savemapping))
 
+if __name__ == "__main__":
+    obj = Translitration('/nfs/alldata/Airtel/Manifest/sub_clean_lm_output.csv', lm='transcript', gt='gt')
+    obj.run_command('/nfs/alldata/Airtel/Manifest/sub_clean_lm_output-v1.pkl',
+    '/nfs/alldata/Airtel/Manifest/sub_clean_lm_output-v1.pkl',
+    '/nfs/alldata/Airtel/Manifest/sub_clean_lm_output_gt-v1.csv')
