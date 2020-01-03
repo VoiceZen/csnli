@@ -75,7 +75,7 @@ class Translitration():
             for i in only_lower:
                 if len(i) != 0:
                     f.write(i+'\n')
-        FULL_COMMAND = "./env_changer.sh {} {}".format(temp_input,temp_output)
+        FULL_COMMAND = "bash env_changer.sh {} {}".format(temp_input,temp_output)
         print("Running {}".format(FULL_COMMAND))
         pp = subprocess.Popen(shlex.split(FULL_COMMAND),shell=True,stdout=subprocess.DEVNULL)
         pp.wait()

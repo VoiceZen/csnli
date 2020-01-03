@@ -95,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--wx', action='store_true', help='set this flag to return Hindi words in WX')
     parser.add_argument('--output-file', dest='ofile', default='temp_output.csv', help='Output File')
     args = parser.parse_args()
-    val_inputs = list(set(io.open(args.tfile).read().split()))
+    val_inputs = list(set(io.open(args.tfile).read().split('\n')))
     with io.open(args.ofile, 'w') as ofp:
         for i in range(0,len(val_inputs),10000):
             ifp = val_inputs[i:i+10000]
