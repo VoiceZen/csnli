@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 import dynet_config
-dynet_config.set(random_seed=127, autobatch=1)
+dynet_config.set(mem="16384",random_seed=127, autobatch=1,requested_gpus=1)
 
+# import StringIO as io
 import io
 import re
 import sys
@@ -18,12 +19,14 @@ import kenlm
 import enchant
 import numpy as np
 import dynet as dy
+import pandas as pd
+import numpy as np
 
 from wxconv import WXC
 from so_viterbi import so_viterbi
+# from vamsi_viterbi import so_viterbi
 from lang_tagger import *
 from nmt.transliterate import Transliterate
-
 
 class ThreeStepDecoding(object):
     def __init__(self, lid, htrans=None, etrans=None, wx=False):
@@ -51,12 +54,13 @@ class ThreeStepDecoding(object):
 
     def decode(self, words, ltags):
         words = [re.sub(r'([a-z])\1\1+', r'\1', w) for w in words]
-        hi_trellis = [self.lid.htrans.get(wi.lower(), [wi]*5)[:5] + 
-                      self.e2h.get(wi.lower() if li == 'en' else None, [u'_%s_' %wi])[:1] + 
+        hi_trellis = [self.lid.htrans.get(wi.lower(), [wi]*5)[:5] +
+                      self.e2h.get(wi.lower() if li == 'en' else None, [u'_%s_' %wi])[:1] +
                       [u'_%s_'%wi] for wi,li in zip(words, ltags)]
+        # import pdb; pdb.set_trace()
         hi_mono = self.max_likelihood(hi_trellis, 'hi')
-        en_trellis = [[wi] + self.lid.etrans.get(wi.lower(), [wi]*5)[:5] + 
-                      self.h2e.get(wh if li == 'hi' else None, [wi])[:1] 
+        en_trellis = [[wi] + self.lid.etrans.get(wi.lower(), [wi]*5)[:5] +
+                      self.h2e.get(wh if li == 'hi' else None, [wi])[:1]
                       for wi,wh,li in zip (words, hi_mono, ltags)]
         en_mono = self.max_likelihood(en_trellis, 'en')
         out = hi_mono[:]
@@ -75,29 +79,55 @@ class ThreeStepDecoding(object):
             elif not self.wx:
                 out[i] = self.wxc.convert(out[i])
         return out
-    
+
     def tag_sent(self, sent, trans=True):
         sent = sent.split()
         sent, ltags = zip(*self.lid.tag_sent(sent))
         dec = self.decode(sent, ltags)
         return zip(sent, dec, ltags)
-    
+
 if __name__ == '__main__':
     parser = ArgumentParser(description="Language Identification System")
-    parser.add_argument('--test-file', dest='tfile', required=True, help='Raw Test file')
-    parser.add_argument('--lid-model', dest='lid_model', help='Load Pretrained Model')
-    parser.add_argument('--etrans', required=True, help='OpenNMT English Transliteration Model')
-    parser.add_argument('--htrans', required=True, help='OpenNMT Hindi Transliteration Model')
+    parser.add_argument('--test-file', default="/home/vz/ak47/csnli/test_file.csv",dest='tfile',  help='Raw Test file')
+    parser.add_argument('--lid-model', default='lid_models/hinglish',dest='lid_model', help='Load Pretrained Model')
+    parser.add_argument('--etrans',default='nmt_models/eng2eng.pt',  help='OpenNMT English Transliteration Model')
+    parser.add_argument('--htrans',default='nmt_models/rom2hin.pt',  help='OpenNMT Hindi Transliteration Model')
     parser.add_argument('--wx', action='store_true', help='set this flag to return Hindi words in WX')
-    parser.add_argument('--output-file', dest='ofile', default='/tmp/out.txt', help='Output File')
+    parser.add_argument('--output-file', dest='ofile', default='/home/vz/ak47/csnli/test_file_output.csv', help='Output File')
     args = parser.parse_args()
-
     tsd = ThreeStepDecoding(args.lid_model, args.htrans, args.etrans, wx=args.wx)
     tsd.lid.en_trans.transliterate('\n'.join(set(io.open(args.tfile).read().split())))
     tsd.lid.etrans = tsd.lid.en_trans.trans_dict
     tsd.lid.hi_trans.transliterate('\n'.join(set(io.open(args.tfile).read().split())))
     tsd.lid.htrans = tsd.lid.hi_trans.trans_dict
+    
     with io.open(args.tfile) as ifp, io.open(args.ofile, 'w') as ofp:
+        print("LETS START")
         for i,sent in enumerate(ifp):
-            dec_sent = tsd.tag_sent(sent, trans=False)
-            ofp.write('\n'.join(['\t'.join(x) for x in dec_sent])+'\n\n')
+            try:
+                if i%10==0:
+                    print(sent,"  Completed : ",i)
+                if sent=='""\n' or sent==u'\n':
+                    ofp.write(",")
+                    ofp.write('\n')
+                    continue
+                elif len(sent)>=1:
+                    dec_sent = tsd.tag_sent(sent, trans=False)
+                    ofp.write(" ".join(sent.split()))
+                    ofp.write(",")
+                    ofp.write(" ".join([''.join(x[1]) for x in dec_sent]))
+                    ofp.write(",")
+                    ofp.write(" ".join([''.join(x[2]) for x in dec_sent]))
+                    ofp.write('\n')
+                else:
+                    ofp.write(",")
+                    ofp.write('\n')
+            except:
+                ofp.write(",")
+                ofp.write('\n')
+                continue
+
+    # if chunk_extractor:
+
+
+
