@@ -24,6 +24,9 @@ Download models from `csnli-models`_.
     bunzip2 lid_models/*
     bunzip2 nmt_models/*
 
+## Before running, in the env update 
+
+export LC_CTYPE=en_US.UTF-8
 
 Three Step Decoding
 ^^^^^^^^^^^^^^^^^^^
