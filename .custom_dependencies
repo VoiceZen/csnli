@@ -1,0 +1,14 @@
+#!/bin/bash
+export PYTHONIOENCODING=utf8
+export CUDA_PATH=/usr/local/cuda-10.0
+export LC_CTYPE=en_US.UTF-8
+export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64
+pip install -r requirements.txt
+python build_viterbi.py build_ext --inplace
+#git clone https://bitbucket.org/irshadbhat/csnli-models.git
+#mv csnli-models/* ./
+#sudo rm -r ./csnli-models
+#bunzip2 lm/*
+#bunzip2 dicts/*
+#bunzip2 lid_models/*
+#bunzip2 nmt_models/*
